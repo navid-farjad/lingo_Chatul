@@ -29,6 +29,7 @@ services:
       BUNDLE_PATH: /usr/local/bundle
     volumes:
       - ./api:/app
+      - ./content-pipeline:/content-pipeline
       - bundle_cache:/usr/local/bundle
     ports:
       - "3000:3000"

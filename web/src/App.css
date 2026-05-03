@@ -1,0 +1,343 @@
+:root {
+  --bg: #fafaf7;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --accent: #d97706;
+  --accent-soft: #fef3c7;
+  --green: #15803d;
+  --green-bg: #dcfce7;
+  --red: #b91c1c;
+  --red-bg: #fee2e2;
+  --border: #e7e5e0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+/* === Header === */
+header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.tagline {
+  margin: 2px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.tab {
+  background: transparent;
+  border: 0;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* === Status states === */
+.loading, .error, .empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--muted);
+}
+
+.error { color: var(--red); }
+
+.empty-state h2 {
+  font-size: 24px;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.empty-state p { margin: 0 0 20px; }
+
+.stat-right { color: var(--green); font-weight: 600; }
+.stat-wrong { color: var(--red); font-weight: 600; }
+
+/* === Review view === */
+.review {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.progress {
+  font-size: 14px;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+/* === Flip card === */
+.card-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.flip-card {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 3 / 4;
+  perspective: 1400px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flip-card.flipped .flip-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-front, .flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.flip-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+}
+
+.front-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.native-large {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.romanization-large {
+  font-size: 18px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.audio-btn {
+  margin-top: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 0;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audio-btn:hover { filter: brightness(0.95); }
+
+.flip-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.flip-back img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.back-content {
+  flex: 1;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.english-large {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.story {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #333;
+}
+
+/* === Answer buttons === */
+.answer-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.btn {
+  flex: 1;
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+}
+
+.btn:active { transform: translateY(1px); }
+.btn:hover { filter: brightness(0.97); }
+
+.btn-wrong { background: var(--red-bg); color: var(--red); }
+.btn-right { background: var(--green-bg); color: var(--green); }
+
+.btn-primary {
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 28px;
+  border-radius: 999px;
+}
+
+/* === Gallery === */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.gallery-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.gallery-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.gallery-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.native {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.romanization {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.english {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+.story-small {
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: #444;
+  line-height: 1.5;
+}
+
+audio { width: 100%; height: 32px; }
+
+/* === Mobile === */
+@media (max-width: 480px) {
+  .page { padding: 16px 12px 60px; }
+  .native-large { font-size: 36px; }
+  .flip-card { max-width: 100%; }
+}
