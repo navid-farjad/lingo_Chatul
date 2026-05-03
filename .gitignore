@@ -1,0 +1,50 @@
+# === Secrets & env ===
+.env
+.env.local
+.env.*.local
+
+# === Rails (api/) ===
+api/log/*
+api/tmp/*
+api/storage/*
+api/db/*.sqlite3*
+api/.bundle
+api/vendor/bundle
+api/config/master.key
+api/config/credentials/*.key
+api/coverage/
+
+# === Node / Vite (web/) ===
+node_modules/
+web/dist/
+web/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Capacitor (mobile wrappers, generated) ===
+web/ios/
+web/android/
+capacitor.config.local.*
+
+# === Content pipeline outputs (generated, large) ===
+content-pipeline/output/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# === Claude / agent state ===
+.claude/
+
+# === Build artifacts ===
+*.tsbuildinfo
+dist/
+build/
