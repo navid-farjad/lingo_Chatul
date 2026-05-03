@@ -27,7 +27,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
 
       - name: Build
         env:
