@@ -13,6 +13,7 @@ export type Card = {
   story: string;
   image_url: string;
   audio_url: string;
+  is_new?: boolean;
 };
 
 export type Language = {
@@ -67,18 +68,35 @@ export type Stats = {
 export const fetchStats = (languageCode: string) =>
   api<Stats>(`/api/v1/stats?language=${encodeURIComponent(languageCode)}`);
 
+export type Rating = "again" | "hard" | "good" | "easy";
+
+export type CardStateSnapshot = {
+  leitner_box: number;
+  correct_count: number;
+  incorrect_count: number;
+  next_review_at: string | null;
+  last_reviewed_at: string | null;
+};
+
 export type ReviewResult = {
   card_id: number;
   leitner_box: number;
   next_review_at: string | null;
   correct_count: number;
   incorrect_count: number;
+  prior_state: CardStateSnapshot | null;
 };
 
-export const submitReview = (cardId: number, correct: boolean) =>
+export const submitReview = (cardId: number, rating: Rating) =>
   api<ReviewResult>(`/api/v1/cards/${cardId}/reviews`, {
     method: "POST",
-    body: JSON.stringify({ correct })
+    body: JSON.stringify({ rating })
+  });
+
+export const undoReview = (cardId: number, priorState: CardStateSnapshot | null) =>
+  api<{ ok: boolean }>(`/api/v1/cards/${cardId}/reviews/undo`, {
+    method: "POST",
+    body: JSON.stringify({ prior_state: priorState })
   });
 
 // Ensure a device-token session exists

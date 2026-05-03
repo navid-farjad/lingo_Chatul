@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
   fetchLanguages,
   fetchQueue,
   fetchStats,
   submitReview,
+  undoReview,
   useSession,
   getStoredLanguage,
   setStoredLanguage,
   type Card,
+  type CardStateSnapshot,
   type Language,
+  type Rating,
   type Stats
 } from "./api";
 import { FlipCard } from "./Card";
@@ -21,6 +24,7 @@ export default function App() {
   const [languages, setLanguages] = useState<Language[] | null>(null);
   const [currentCode, setCurrentCode] = useState<string>(getStoredLanguage());
   const [view, setView] = useState<View>("today");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchLanguages()
@@ -40,6 +44,12 @@ export default function App() {
   const switchLanguage = (code: string) => {
     setCurrentCode(code);
     setStoredLanguage(code);
+    setMenuOpen(false);
+  };
+
+  const switchView = (v: View) => {
+    setView(v);
+    setMenuOpen(false);
   };
 
   return (
@@ -55,28 +65,26 @@ export default function App() {
             {current ? `${current.name} through cats` : "Through cats"}
           </p>
         </div>
-        {languages && languages.length > 1 && (
-          <LanguageSwitch
-            languages={languages}
-            currentCode={currentCode}
-            onChange={switchLanguage}
-          />
-        )}
-        <nav className="tabs">
-          <button
-            className={view === "today" ? "tab active" : "tab"}
-            onClick={() => setView("today")}
-          >
-            Today
-          </button>
-          <button
-            className={view === "stats" ? "tab active" : "tab"}
-            onClick={() => setView("stats")}
-          >
-            Stats
-          </button>
-        </nav>
+
+        <button
+          className="avatar-btn"
+          aria-label="Open menu"
+          onClick={() => setMenuOpen(true)}
+        >
+          <CatGlyph />
+        </button>
       </header>
+
+      {menuOpen && languages && current && (
+        <ProfileMenu
+          languages={languages}
+          currentCode={currentCode}
+          currentView={view}
+          onClose={() => setMenuOpen(false)}
+          onSwitchLanguage={switchLanguage}
+          onSwitchView={switchView}
+        />
+      )}
 
       {!sessionReady || !current ? (
         <div className="loading">Setting up your session…</div>
@@ -89,26 +97,106 @@ export default function App() {
   );
 }
 
-function LanguageSwitch({
+function CatGlyph() {
+  // Minimalist cat silhouette — uses currentColor so it inherits theme
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
+      <path d="M5.5 4.5 7 9c-1.4 1.2-2 2.7-2 4.5C5 17.5 8 20 12 20s7-2.5 7-6.5c0-1.8-.6-3.3-2-4.5l1.5-4.5L15 6.7c-.9-.4-1.9-.7-3-.7s-2.1.3-3 .7L5.5 4.5Zm4.7 7.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm3.6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM12 16.5c-1 0-1.8-.5-2-1.2.6.2 1.3.3 2 .3s1.4-.1 2-.3c-.2.7-1 1.2-2 1.2Z"/>
+    </svg>
+  );
+}
+
+function ProfileMenu({
   languages,
   currentCode,
-  onChange
+  currentView,
+  onClose,
+  onSwitchLanguage,
+  onSwitchView
 }: {
   languages: Language[];
   currentCode: string;
-  onChange: (code: string) => void;
+  currentView: View;
+  onClose: () => void;
+  onSwitchLanguage: (code: string) => void;
+  onSwitchView: (v: View) => void;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div className="lang-switch">
-      {languages.map((l) => (
-        <button
-          key={l.code}
-          className={l.code === currentCode ? "lang-tab active" : "lang-tab"}
-          onClick={() => onChange(l.code)}
-        >
-          {l.name}
+    <div className="menu-overlay" onClick={onClose}>
+      <div
+        ref={panelRef}
+        className="menu-panel"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Profile menu"
+      >
+        <section className="menu-section menu-account-section">
+          <div className="menu-avatar">
+            <CatGlyph />
+          </div>
+          <div>
+            <div className="menu-account-name">Anonymous</div>
+            <button className="menu-link" disabled>
+              Sign in (coming soon)
+            </button>
+          </div>
+        </section>
+
+        <section className="menu-section">
+          <div className="menu-section-title">Language</div>
+          <ul className="menu-list">
+            {languages.map((l) => (
+              <li key={l.code}>
+                <button
+                  className={l.code === currentCode ? "menu-item active" : "menu-item"}
+                  onClick={() => onSwitchLanguage(l.code)}
+                >
+                  <span>{l.name}</span>
+                  {l.code === currentCode && <span className="menu-check">✓</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="menu-section">
+          <div className="menu-section-title">View</div>
+          <ul className="menu-list">
+            <li>
+              <button
+                className={currentView === "today" ? "menu-item active" : "menu-item"}
+                onClick={() => onSwitchView("today")}
+              >
+                <span>Today's review</span>
+                {currentView === "today" && <span className="menu-check">✓</span>}
+              </button>
+            </li>
+            <li>
+              <button
+                className={currentView === "stats" ? "menu-item active" : "menu-item"}
+                onClick={() => onSwitchView("stats")}
+              >
+                <span>Progress &amp; stats</span>
+                {currentView === "stats" && <span className="menu-check">✓</span>}
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <button className="menu-close" onClick={onClose}>
+          Close
         </button>
-      ))}
+      </div>
     </div>
   );
 }
@@ -116,7 +204,9 @@ function LanguageSwitch({
 function ReviewView({ language }: { language: Language }) {
   const [queue, setQueue] = useState<Card[] | null>(null);
   const [idx, setIdx] = useState(0);
-  const [stats, setStats] = useState({ right: 0, wrong: 0 });
+  const [history, setHistory] = useState<
+    { cardId: number; rating: Rating; priorState: CardStateSnapshot | null }[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -136,19 +226,21 @@ function ReviewView({ language }: { language: Language }) {
   }
 
   if (idx >= queue.length) {
+    const correct = history.filter((h) => h.rating !== "again").length;
+    const wrong = history.length - correct;
     return (
       <div className="empty-state">
         <h2>Done for today!</h2>
         <p>
           You reviewed <strong>{queue.length}</strong> {language.name} cards —{" "}
-          <span className="stat-right">{stats.right} correct</span>,{" "}
-          <span className="stat-wrong">{stats.wrong} missed</span>.
+          <span className="stat-right">{correct} correct</span>,{" "}
+          <span className="stat-wrong">{wrong} missed</span>.
         </p>
         <button
           className="btn btn-primary"
           onClick={() => {
             setIdx(0);
-            setStats({ right: 0, wrong: 0 });
+            setHistory([]);
             fetchQueue(language.code).then(setQueue);
           }}
         >
@@ -159,24 +251,54 @@ function ReviewView({ language }: { language: Language }) {
   }
 
   const card = queue[idx];
+  const newCount = queue.filter((c) => c.is_new).length;
+  const reviewCount = queue.length - newCount;
+
+  const onAnswer = async (rating: Rating) => {
+    try {
+      const result = await submitReview(card.id, rating);
+      setHistory((h) => [
+        ...h,
+        { cardId: card.id, rating, priorState: result.prior_state }
+      ]);
+    } catch (e) {
+      console.error(e);
+    }
+    setIdx((i) => i + 1);
+  };
+
+  const onUndo = async () => {
+    if (history.length === 0) return;
+    const last = history[history.length - 1];
+    try {
+      await undoReview(last.cardId, last.priorState);
+    } catch (e) {
+      console.error(e);
+    }
+    setHistory((h) => h.slice(0, -1));
+    setIdx((i) => Math.max(0, i - 1));
+  };
 
   return (
     <div className="review">
-      <div className="progress">
-        Card <strong>{idx + 1}</strong> of <strong>{queue.length}</strong>
+      <div className="session-header">
+        <span className="session-bit">{newCount} new</span>
+        <span className="session-dot">·</span>
+        <span className="session-bit">{reviewCount} review</span>
       </div>
-      <FlipCard
-        card={card}
-        rtl={language.rtl}
-        onAnswer={async (correct) => {
-          setStats((s) => ({
-            right: s.right + (correct ? 1 : 0),
-            wrong: s.wrong + (correct ? 0 : 1)
-          }));
-          submitReview(card.id, correct).catch((e) => console.error(e));
-          setIdx((i) => i + 1);
-        }}
-      />
+
+      <div className="review-top">
+        <div className="progress">
+          Card <strong>{idx + 1}</strong> of <strong>{queue.length}</strong>
+        </div>
+        {history.length > 0 && (
+          <button className="undo-btn" onClick={onUndo} aria-label="Undo last review">
+            ↶ Undo
+          </button>
+        )}
+      </div>
+
+      <FlipCard card={card} rtl={language.rtl} onAnswer={onAnswer} />
     </div>
   );
 }

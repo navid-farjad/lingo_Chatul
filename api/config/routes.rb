@@ -11,7 +11,11 @@ Rails.application.routes.draw do
         collection do
           get :queue
         end
-        resources :reviews, only: [:create]
+        resources :reviews, only: [:create] do
+          collection do
+            post :undo
+          end
+        end
       end
     end
   end

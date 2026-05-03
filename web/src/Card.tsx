@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import type { Card } from "./api";
+import type { Card, Rating } from "./api";
 
 type Props = {
   card: Card;
   rtl?: boolean;
-  onAnswer: (correct: boolean) => void;
+  onAnswer: (rating: Rating) => void;
 };
+
+const RATINGS: { rating: Rating; label: string; sub: string; className: string }[] = [
+  { rating: "again", label: "Again", sub: "1 day", className: "btn-again" },
+  { rating: "hard",  label: "Hard",  sub: "stay",  className: "btn-hard" },
+  { rating: "good",  label: "Good",  sub: "next",  className: "btn-good" },
+  { rating: "easy",  label: "Easy",  sub: "skip",  className: "btn-easy" }
+];
 
 export function FlipCard({ card, rtl = false, onAnswer }: Props) {
   const [flipped, setFlipped] = useState(false);
@@ -34,7 +41,13 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
             </div>
             <div className="card-text-area">
               <div className="card-text-stack">
-                <div className="native-large" dir={rtl ? "rtl" : "ltr"} lang={card.language_code}>{card.native}</div>
+                <div
+                  className="native-large"
+                  dir={rtl ? "rtl" : "ltr"}
+                  lang={card.language_code}
+                >
+                  {card.native}
+                </div>
                 <div className="romanization-large">{card.romanization}</div>
                 <button
                   className="audio-btn"
@@ -55,7 +68,13 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
             </div>
             <div className="back-content">
               <div className="back-header">
-                <div className="back-native" dir={rtl ? "rtl" : "ltr"} lang={card.language_code}>{card.native}</div>
+                <div
+                  className="back-native"
+                  dir={rtl ? "rtl" : "ltr"}
+                  lang={card.language_code}
+                >
+                  {card.native}
+                </div>
                 <div className="back-romanization">{card.romanization}</div>
               </div>
               <div className="english-row">
@@ -77,14 +96,16 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
 
       {flipped && (
         <div className="answer-buttons">
-          <button className="btn btn-wrong" onClick={() => onAnswer(false)}>
-            <span className="btn-icon">✗</span>
-            <span>Again</span>
-          </button>
-          <button className="btn btn-right" onClick={() => onAnswer(true)}>
-            <span className="btn-icon">✓</span>
-            <span>Got it</span>
-          </button>
+          {RATINGS.map((r) => (
+            <button
+              key={r.rating}
+              className={`btn ${r.className}`}
+              onClick={() => onAnswer(r.rating)}
+            >
+              <span className="btn-label">{r.label}</span>
+              <span className="btn-sub">{r.sub}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

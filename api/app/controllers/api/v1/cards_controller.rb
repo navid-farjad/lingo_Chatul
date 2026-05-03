@@ -39,7 +39,8 @@ module Api
           records: cards, associations: { word: :language }
         ).call
 
-        render json: cards.map { |c| serialize(c) }
+        seen_set = seen_ids.to_set
+        render json: cards.map { |c| serialize(c).merge(is_new: !seen_set.include?(c.id)) }
       end
 
       private
