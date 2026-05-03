@@ -62,9 +62,10 @@ lingo_chatul/
 ├── content-pipeline/seeds/         # CSV decks (greek_starter.csv, …)
 ├── infra/
 │   ├── README.md                   # Pointer to DEPLOY.md
-│   └── DEPLOY.md                   # ⭐ HOW PROD IS DEPLOYED (CF Worker + Hetzner)
-├── bin/
-│   └── kamal.ps1                   # Windows wrapper for the basecamp/kamal Docker image
+│   ├── DEPLOY.md                   # ⭐ HOW PROD IS DEPLOYED (CF Worker + Hetzner)
+│   ├── docker-compose.prod.yml     # Production stack: db + app + caddy
+│   ├── Caddyfile                   # api.lingochatul.com → app:80
+│   └── deploy.ps1                  # ssh + git pull + docker compose build + up
 ├── .github/workflows/
 │   └── deploy-web.yml              # Auto-deploys web/ on push to `production`
 ├── docs/
@@ -134,13 +135,13 @@ For any task involving **adding a new language, expanding a deck, regenerating a
 
 ## Deploy
 
-Read **[infra/DEPLOY.md](infra/DEPLOY.md)** before touching anything deploy-related. It documents the live frontend, the in-progress backend, secrets layout, and the known Kamal-vs-ghcr.io blocker.
+Both halves are live. Read **[infra/DEPLOY.md](infra/DEPLOY.md)** before touching anything deploy-related — it covers the full architecture, secrets layout, ops commands, and how to seed prod data.
 
 TL;DR:
 - **Frontend** is live at <https://app.lingochatul.com> via a Cloudflare Worker (`lingo-chatul-web`). Auto-deploys on push to the `production` branch via [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml).
-- **Backend** target is `api.lingochatul.com` on Hetzner `49.12.247.57` via Kamal. The Rails image builds and pushes; Kamal's `docker login` step is currently blocked by a quoting bug — see [infra/DEPLOY.md §3](infra/DEPLOY.md#3-backend--in-progress-) for the fix and the next-agent checklist.
-- Run Kamal commands through [bin/kamal.ps1](bin/kamal.ps1) — it wraps `ghcr.io/basecamp/kamal:latest` so no Ruby is needed locally.
-- Secrets live in `.env` (gitignored) and are sourced into Kamal via [api/.kamal/secrets](api/.kamal/secrets). Cloudflare/GitHub secrets are documented in [infra/DEPLOY.md §7](infra/DEPLOY.md#7-where-secrets-live).
+- **Backend** is live at <https://api.lingochatul.com> on Hetzner `49.12.247.57`. Plain `docker compose` stack (Caddy → Rails → Postgres) defined in [infra/docker-compose.prod.yml](infra/docker-compose.prod.yml). Caddy auto-fetches Let's Encrypt certs.
+- To deploy the backend: `./infra/deploy.ps1` after committing to `main`. SSHs in, fast-forwards `/opt/lingo`, rebuilds the app image, restarts only what changed.
+- Production secrets live in `/opt/lingo/.env` on the Hetzner box (mode 0600). Local copy is at the repo root (gitignored).
 
 ---
 
