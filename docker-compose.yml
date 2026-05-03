@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lingo_chatul_db
+    environment:
+      POSTGRES_USER: lingo_chatul
+      POSTGRES_PASSWORD: lingo_chatul
+      POSTGRES_DB: lingo_chatul_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lingo_chatul"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: lingo_chatul_api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://lingo_chatul:lingo_chatul@db:5432/lingo_chatul_development
+      RAILS_ENV: development
+      BUNDLE_PATH: /usr/local/bundle
+    volumes:
+      - ./api:/app
+      - bundle_cache:/usr/local/bundle
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    tty: true
+    stdin_open: true
+    command: >
+      bash -c "
+        bundle check || bundle install &&
+        bundle exec rails db:prepare 2>/dev/null || true &&
+        bundle exec rails s -b 0.0.0.0 -p 3000
+      "
+
+volumes:
+  pg_data:
+  bundle_cache:
