@@ -3,10 +3,11 @@ import type { Card } from "./api";
 
 type Props = {
   card: Card;
+  rtl?: boolean;
   onAnswer: (correct: boolean) => void;
 };
 
-export function FlipCard({ card, onAnswer }: Props) {
+export function FlipCard({ card, rtl = false, onAnswer }: Props) {
   const [flipped, setFlipped] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -33,7 +34,7 @@ export function FlipCard({ card, onAnswer }: Props) {
             </div>
             <div className="card-text-area">
               <div className="card-text-stack">
-                <div className="native-large">{card.native}</div>
+                <div className="native-large" dir={rtl ? "rtl" : "ltr"} lang={card.language_code}>{card.native}</div>
                 <div className="romanization-large">{card.romanization}</div>
                 <button
                   className="audio-btn"
@@ -54,10 +55,19 @@ export function FlipCard({ card, onAnswer }: Props) {
             </div>
             <div className="back-content">
               <div className="back-header">
-                <div className="back-native">{card.native}</div>
+                <div className="back-native" dir={rtl ? "rtl" : "ltr"} lang={card.language_code}>{card.native}</div>
                 <div className="back-romanization">{card.romanization}</div>
               </div>
-              <div className="english-large">{card.english}</div>
+              <div className="english-row">
+                <div className="english-large">{card.english}</div>
+                <button
+                  className="audio-btn-icon"
+                  onClick={playAudio}
+                  aria-label="Play pronunciation"
+                >
+                  ▶
+                </button>
+              </div>
               <p className="story">{card.story}</p>
             </div>
           </div>

@@ -9,25 +9,32 @@ module Api
         render json: cards.map { |c| serialize(c) }
       end
 
-      # GET /api/v1/cards/queue
+      # GET /api/v1/cards/queue?language=el&limit=20
       # Returns today's review queue: cards whose UserCardState is due, plus
-      # any cards the user has never seen (capped at `limit`, default 20).
+      # any cards the user has never seen, scoped to a single language.
       def queue
         limit = (params[:limit] || 20).to_i.clamp(1, 100)
+        language_code = (params[:language] || "el").to_s
+        language = Language.enabled.find_by(code: language_code)
+        return render(json: []) unless language
 
-        # 1. Cards where the user already has state and review is due
-        due_states = UserCardState.due.where(user: current_user).limit(limit)
+        word_ids = language.words.pluck(:id)
+
+        due_states = UserCardState.due
+          .where(user: current_user)
+          .joins(:card)
+          .where(cards: { word_id: word_ids })
+          .limit(limit)
         due_card_ids = due_states.pluck(:card_id)
 
-        # 2. New cards the user hasn't seen yet
         seen_ids = current_user.user_card_states.pluck(:card_id)
-        new_cards = Card.ready.where.not(id: seen_ids).limit(limit - due_card_ids.size)
+        new_cards = Card.ready
+          .where(word_id: word_ids)
+          .where.not(id: seen_ids)
+          .limit(limit - due_card_ids.size)
 
-        cards = (Card.where(id: due_card_ids) + new_cards)
-          .uniq
-          .first(limit)
+        cards = (Card.where(id: due_card_ids) + new_cards).uniq.first(limit)
 
-        # Preload associations to avoid N+1
         ActiveRecord::Associations::Preloader.new(
           records: cards, associations: { word: :language }
         ).call

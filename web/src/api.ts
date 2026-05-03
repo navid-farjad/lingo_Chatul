@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const API_BASE = "http://localhost:3000";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000";
 
 export type Card = {
   id: number;
@@ -15,6 +15,13 @@ export type Card = {
   audio_url: string;
 };
 
+export type Language = {
+  code: string;
+  name: string;
+  rtl: boolean;
+  card_count: number;
+};
+
 export type Session = {
   user_id: number;
   device_token: string;
@@ -22,6 +29,7 @@ export type Session = {
 };
 
 const TOKEN_KEY = "lingo_chatul_device_token";
+const LANG_KEY = "lingo_chatul_language";
 
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -40,8 +48,24 @@ export async function createSession(): Promise<Session> {
   return s;
 }
 
-export const fetchCards = () => api<Card[]>("/api/v1/cards");
-export const fetchQueue = () => api<Card[]>("/api/v1/cards/queue");
+export const fetchLanguages = () => api<Language[]>("/api/v1/languages");
+export const fetchQueue = (languageCode: string) =>
+  api<Card[]>(`/api/v1/cards/queue?language=${encodeURIComponent(languageCode)}`);
+
+export type Stats = {
+  language: { code: string; name: string; rtl: boolean };
+  box_distribution: Record<string, number>;
+  total_cards: number;
+  cards_started: number;
+  cards_new: number;
+  cards_mastered: number;
+  due_now: number;
+  reviewed_today: number;
+  streak_days: number;
+};
+
+export const fetchStats = (languageCode: string) =>
+  api<Stats>(`/api/v1/stats?language=${encodeURIComponent(languageCode)}`);
 
 export type ReviewResult = {
   card_id: number;
@@ -57,20 +81,24 @@ export const submitReview = (cardId: number, correct: boolean) =>
     body: JSON.stringify({ correct })
   });
 
-// React hook: ensure a device-token session exists
+// Ensure a device-token session exists
 export function useSession() {
   const [ready, setReady] = useState(false);
-
   useEffect(() => {
-    const existing = localStorage.getItem(TOKEN_KEY);
-    if (existing) {
+    if (localStorage.getItem(TOKEN_KEY)) {
       setReady(true);
     } else {
-      createSession()
-        .then(() => setReady(true))
-        .catch((e) => console.error("Failed to create session:", e));
+      createSession().then(() => setReady(true)).catch(console.error);
     }
   }, []);
-
   return ready;
+}
+
+// Persist current language code in localStorage
+export function getStoredLanguage(): string {
+  return localStorage.getItem(LANG_KEY) || "el";
+}
+
+export function setStoredLanguage(code: string) {
+  localStorage.setItem(LANG_KEY, code);
 }

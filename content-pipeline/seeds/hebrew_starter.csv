@@ -1,0 +1,21 @@
+native,romanization,english,part_of_speech,notes
+שלום,shalom,hello / peace,interjection,literally peace; used for both hello and goodbye
+תודה,toda,thank you,interjection,everyday courtesy
+בבקשה,bevakasha,please / you're welcome,interjection,doubles as response to thanks
+כן,ken,yes,particle,short and sharp
+לא,lo,no,particle,short and sharp
+מים,mayim,water,noun,masculine plural (always plural in Hebrew)
+אוכל,ochel,food,noun,masculine
+בית,bayit,house,noun,masculine; root B-Y-T
+חבר,chaver,friend,noun,masculine (חברה chavera for feminine)
+אהבה,ahava,love,noun,feminine
+טוב,tov,good,adjective,masculine (טובה tova for feminine)
+גדול,gadol,big,adjective,masculine
+קטן,katan,small,adjective,masculine
+ספר,sefer,book,noun,masculine; root S-P-R for writing and counting
+רחוב,rechov,street,noun,masculine
+שמש,shemesh,sun,noun,masculine
+ים,yam,sea,noun,masculine; very short word
+זמן,zman,time,noun,masculine
+חתול,chatul,cat,noun,masculine; the app's namesake
+בוקר טוב,boker tov,good morning,interjection,literally morning good (adjective follows noun)
