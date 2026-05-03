@@ -1,0 +1,8 @@
+api.lingochatul.com {
+	reverse_proxy app:80
+	encode zstd gzip
+	log {
+		output stdout
+		format console
+	}
+}
