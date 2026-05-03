@@ -266,10 +266,26 @@ function ReviewView({ language }: { language: Language }) {
     { cardId: number; rating: Rating; priorState: CardStateSnapshot | null }[]
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const [endStats, setEndStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     fetchQueue(language.code).then(setQueue).catch((e) => setError(String(e)));
   }, [language.code]);
+
+  // Refresh stats whenever we land on an empty / done screen
+  useEffect(() => {
+    if (queue && (queue.length === 0 || idx >= queue.length)) {
+      fetchStats(language.code).then(setEndStats).catch(() => {});
+    }
+  }, [queue, idx, language.code]);
+
+  // Pre-load next card's image so the flip → next transition is instant
+  useEffect(() => {
+    if (queue && idx + 1 < queue.length) {
+      const img = new Image();
+      img.src = queue[idx + 1].image_url;
+    }
+  }, [queue, idx]);
 
   if (error) return <div className="error">Couldn't load queue: {error}</div>;
   if (!queue) return <div className="loading">Loading today's queue…</div>;
@@ -277,8 +293,14 @@ function ReviewView({ language }: { language: Language }) {
   if (queue.length === 0) {
     return (
       <div className="empty-state">
+        <div className="empty-glyph">✦</div>
         <h2>You're all caught up</h2>
-        <p>No {language.name} cards due right now. Come back later or switch languages.</p>
+        <p>No {language.name} cards due right now.</p>
+        {endStats && endStats.streak_days > 0 && (
+          <div className="streak-pill">
+            🔥 {endStats.streak_days}-day streak — keep it alive
+          </div>
+        )}
       </div>
     );
   }
@@ -288,12 +310,18 @@ function ReviewView({ language }: { language: Language }) {
     const wrong = history.length - correct;
     return (
       <div className="empty-state">
+        <div className="empty-glyph">🎉</div>
         <h2>Done for today!</h2>
         <p>
           You reviewed <strong>{queue.length}</strong> {language.name} cards —{" "}
           <span className="stat-right">{correct} correct</span>,{" "}
           <span className="stat-wrong">{wrong} missed</span>.
         </p>
+        {endStats && endStats.streak_days > 0 && (
+          <div className="streak-pill">
+            🔥 {endStats.streak_days}-day streak
+          </div>
+        )}
         <button
           className="btn-primary"
           onClick={() => {

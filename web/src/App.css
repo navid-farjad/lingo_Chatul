@@ -540,6 +540,23 @@ header {
 }
 
 .empty-state p { margin: 0 0 20px; }
+
+.empty-glyph {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.streak-pill {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
 .stat-right { color: var(--green); font-weight: 600; }
 .stat-wrong { color: var(--red); font-weight: 600; }
 
@@ -570,6 +587,7 @@ header {
 }
 
 .flip-card {
+  position: relative;
   width: 100%;
   max-width: 560px;
   height: min(78dvh, 760px);
@@ -577,8 +595,13 @@ header {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: manipulation;
+  /* Allow vertical scroll, but capture horizontal so we can swipe */
+  touch-action: pan-y;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+.flip-card.dragging { cursor: grabbing; }
+.flip-card.flipped:not(.dragging) { cursor: grab; }
 
 .flip-card:focus, .flip-card:focus-visible { outline: none; }
 
@@ -795,6 +818,41 @@ header {
 .btn-hard  { background: #fef9c3;         color: #a16207; }
 .btn-good  { background: var(--green-bg); color: var(--green); }
 .btn-easy  { background: #dbeafe;         color: #1d4ed8; }
+
+/* === Swipe overlay (during card drag) === */
+.swipe-overlay {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) rotate(-12deg);
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.05s linear;
+  border: 3px solid currentColor;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.swipe-overlay-left {
+  left: 24px;
+  color: var(--red);
+}
+
+.swipe-overlay-right {
+  right: 24px;
+  color: var(--green);
+  transform: translateY(-50%) rotate(12deg);
+}
+
+.swipe-hint-text {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
 
 /* === Stats view === */
 .stats {

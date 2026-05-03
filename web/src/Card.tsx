@@ -14,12 +14,18 @@ const RATINGS: { rating: Rating; label: string; sub: string; className: string }
   { rating: "easy",  label: "Easy",  sub: "skip",  className: "btn-easy" }
 ];
 
+const SWIPE_THRESHOLD = 120;
+
 export function FlipCard({ card, rtl = false, onAnswer }: Props) {
   const [flipped, setFlipped] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setFlipped(false);
+    setDragX(0);
   }, [card.id]);
 
   const playAudio = (e?: React.MouseEvent) => {
@@ -27,17 +33,58 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
     audioRef.current?.play().catch(() => {});
   };
 
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!flipped) return;
+    setDragging(true);
+    startX.current = e.clientX;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    setDragX(e.clientX - startX.current);
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    setDragging(false);
+    const delta = e.clientX - startX.current;
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+
+    if (delta > SWIPE_THRESHOLD) {
+      onAnswer("good");
+    } else if (delta < -SWIPE_THRESHOLD) {
+      onAnswer("again");
+    }
+    setDragX(0);
+  };
+
+  const swipeOpacityLeft = Math.min(1, Math.max(0, -dragX / SWIPE_THRESHOLD));
+  const swipeOpacityRight = Math.min(1, Math.max(0, dragX / SWIPE_THRESHOLD));
+
   return (
     <div className="card-stage">
       <div
-        className={`flip-card ${flipped ? "flipped" : ""}`}
+        className={`flip-card ${flipped ? "flipped" : ""} ${dragging ? "dragging" : ""}`}
         onClick={() => !flipped && setFlipped(true)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={
+          dragX !== 0
+            ? {
+                transform: `translateX(${dragX}px) rotate(${dragX / 22}deg)`,
+                transition: dragging ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)"
+              }
+            : undefined
+        }
       >
         <div className="flip-inner">
           {/* === FRONT === image + word as the cue */}
           <div className="flip-front">
             <div className="card-image-wrap">
-              <img src={card.image_url} alt="" />
+              <img src={card.image_url} alt="" draggable={false} />
             </div>
             <div className="card-text-area">
               <div className="card-text-stack">
@@ -64,7 +111,7 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
           {/* === BACK === same image + meaning + story */}
           <div className="flip-back">
             <div className="card-image-wrap">
-              <img src={card.image_url} alt={card.english} />
+              <img src={card.image_url} alt={card.english} draggable={false} />
             </div>
             <div className="back-content">
               <div className="back-header">
@@ -91,22 +138,44 @@ export function FlipCard({ card, rtl = false, onAnswer }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Swipe overlays — visible during drag */}
+        {flipped && (
+          <>
+            <div
+              className="swipe-overlay swipe-overlay-left"
+              style={{ opacity: swipeOpacityLeft }}
+            >
+              ✗ Again
+            </div>
+            <div
+              className="swipe-overlay swipe-overlay-right"
+              style={{ opacity: swipeOpacityRight }}
+            >
+              ✓ Got it
+            </div>
+          </>
+        )}
+
         <audio ref={audioRef} src={card.audio_url} preload="auto" />
       </div>
 
       {flipped && (
-        <div className="answer-buttons">
-          {RATINGS.map((r) => (
-            <button
-              key={r.rating}
-              className={`btn ${r.className}`}
-              onClick={() => onAnswer(r.rating)}
-            >
-              <span className="btn-label">{r.label}</span>
-              <span className="btn-sub">{r.sub}</span>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="swipe-hint-text">Swipe ← Again · Got it →</div>
+          <div className="answer-buttons">
+            {RATINGS.map((r) => (
+              <button
+                key={r.rating}
+                className={`btn ${r.className}`}
+                onClick={() => onAnswer(r.rating)}
+              >
+                <span className="btn-label">{r.label}</span>
+                <span className="btn-sub">{r.sub}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
