@@ -6,10 +6,15 @@ class User < ApplicationRecord
   TIERS = %w[anonymous free paid].freeze
 
   validates :device_token, presence: true, uniqueness: true
-  validates :email, uniqueness: { case_sensitive: false }, allow_nil: true
+  validates :email,
+    uniqueness: { case_sensitive: false },
+    format: { with: URI::MailTo::EMAIL_REGEXP },
+    allow_nil: true
   validates :tier, inclusion: { in: TIERS }
+  validates :password, length: { minimum: 8 }, allow_blank: true
 
   before_validation :ensure_device_token, on: :create
+  before_save :downcase_email
 
   def anonymous?
     tier == "anonymous"
@@ -23,5 +28,9 @@ class User < ApplicationRecord
 
   def ensure_device_token
     self.device_token ||= SecureRandom.urlsafe_base64(32)
+  end
+
+  def downcase_email
+    self.email = email.downcase if email.present?
   end
 end

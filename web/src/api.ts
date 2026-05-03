@@ -26,7 +26,18 @@ export type Language = {
 export type Session = {
   user_id: number;
   device_token: string;
+  email?: string | null;
+  name?: string | null;
   tier: string;
+};
+
+export type Me = {
+  user_id: number;
+  device_token: string;
+  email: string | null;
+  name: string | null;
+  tier: string;
+  anonymous: boolean;
 };
 
 const TOKEN_KEY = "lingo_chatul_device_token";
@@ -39,7 +50,17 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body) headers.set("Content-Type", "application/json");
 
   const r = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
+  if (!r.ok) {
+    let msg = `API ${r.status}`;
+    try {
+      const body = await r.json();
+      if (body.error) msg = body.error;
+      else if (Array.isArray(body.errors) && body.errors.length) msg = body.errors.join(". ");
+    } catch {
+      // body wasn't JSON, keep generic message
+    }
+    throw new Error(msg);
+  }
   return r.json();
 }
 
@@ -47,6 +68,35 @@ export async function createSession(): Promise<Session> {
   const s = await api<Session>("/api/v1/sessions", { method: "POST" });
   localStorage.setItem(TOKEN_KEY, s.device_token);
   return s;
+}
+
+export const fetchMe = () => api<Me>("/api/v1/me");
+
+export async function signUp(payload: {
+  email: string;
+  password: string;
+  password_confirmation: string;
+  name?: string;
+}): Promise<Me> {
+  const s = await api<Session>("/api/v1/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  localStorage.setItem(TOKEN_KEY, s.device_token);
+  return await fetchMe();
+}
+
+export async function login(email: string, password: string): Promise<Me> {
+  const s = await api<Session>("/api/v1/sessions/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password })
+  });
+  localStorage.setItem(TOKEN_KEY, s.device_token);
+  return await fetchMe();
+}
+
+export function logout() {
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 export const fetchLanguages = () => api<Language[]>("/api/v1/languages");
@@ -99,16 +149,45 @@ export const undoReview = (cardId: number, priorState: CardStateSnapshot | null)
     body: JSON.stringify({ prior_state: priorState })
   });
 
-// Ensure a device-token session exists
-export function useSession() {
+// Ensures a device-token session exists and returns the current Me object.
+// Components call `refresh` after sign-up / login / logout to re-pull state.
+export function useUser() {
+  const [user, setUser] = useState<Me | null>(null);
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (localStorage.getItem(TOKEN_KEY)) {
+
+  const refresh = async () => {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY)) {
+        await createSession();
+      }
+      const me = await fetchMe();
+      setUser(me);
+    } catch (e) {
+      console.error("Failed to load user", e);
+      // Reset and try once more with a fresh anonymous session
+      logout();
+      try {
+        await createSession();
+        const me = await fetchMe();
+        setUser(me);
+      } catch {
+        // give up — UI shows error state
+      }
+    } finally {
       setReady(true);
-    } else {
-      createSession().then(() => setReady(true)).catch(console.error);
     }
+  };
+
+  useEffect(() => {
+    refresh();
   }, []);
+
+  return { user, ready, refresh };
+}
+
+// Backwards-compat wrapper for components that only need readiness
+export function useSession() {
+  const { ready } = useUser();
   return ready;
 }
 

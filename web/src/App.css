@@ -204,6 +204,203 @@ header {
   color: var(--text);
 }
 
+.menu-account-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.menu-account-tier {
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.menu-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.menu-link-action {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.menu-link-action:hover { text-decoration: underline; }
+
+.menu-link-sep { color: var(--muted); font-size: 13px; }
+
+.menu-item-danger {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.menu-item-danger:hover { background: var(--red-bg); }
+
+.avatar-initial {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+/* === Auth modal === */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+.auth-panel {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: scaleIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.auth-tab.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-field span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-field input {
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.auth-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+.auth-error {
+  background: var(--red-bg);
+  color: var(--red);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-submit {
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.auth-submit:hover:not(:disabled) { filter: brightness(1.1); }
+
+.auth-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.auth-cancel {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px;
+  font-weight: 500;
+}
+
+.auth-cancel:hover { color: var(--text); }
+
+/* btn-primary kept for the "Reload queue" button in empty state */
+.btn-primary {
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* === Session header + undo === */
 .session-header {
   font-size: 13px;
@@ -598,17 +795,6 @@ header {
 .btn-hard  { background: #fef9c3;         color: #a16207; }
 .btn-good  { background: var(--green-bg); color: var(--green); }
 .btn-easy  { background: #dbeafe;         color: #1d4ed8; }
-
-.btn-primary {
-  background: var(--text);
-  color: var(--bg);
-  padding: 12px 28px;
-  border-radius: 999px;
-  border: 0;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
 
 /* === Stats view === */
 .stats {

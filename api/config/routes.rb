@@ -4,7 +4,13 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :sessions, only: [:create]
+      resources :sessions, only: [:create] do
+        collection do
+          post :login
+        end
+      end
+      resources :users, only: [:create]
+      resource :me, only: [:show], controller: "me"
       resources :languages, only: [:index]
       resource :stats, only: [:show]
       resources :cards, only: [:index] do

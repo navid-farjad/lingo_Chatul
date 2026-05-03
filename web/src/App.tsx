@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import {
   fetchLanguages,
@@ -6,25 +6,29 @@ import {
   fetchStats,
   submitReview,
   undoReview,
-  useSession,
+  useUser,
+  logout,
   getStoredLanguage,
   setStoredLanguage,
   type Card,
   type CardStateSnapshot,
   type Language,
+  type Me,
   type Rating,
   type Stats
 } from "./api";
 import { FlipCard } from "./Card";
+import { AuthModal, type AuthMode } from "./Auth";
 
 type View = "today" | "stats";
 
 export default function App() {
-  const sessionReady = useSession();
+  const { user, ready, refresh } = useUser();
   const [languages, setLanguages] = useState<Language[] | null>(null);
   const [currentCode, setCurrentCode] = useState<string>(getStoredLanguage());
   const [view, setView] = useState<View>("today");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
 
   useEffect(() => {
     fetchLanguages()
@@ -52,6 +56,22 @@ export default function App() {
     setMenuOpen(false);
   };
 
+  const openAuth = (mode: AuthMode) => {
+    setMenuOpen(false);
+    setAuthMode(mode);
+  };
+
+  const handleSignedIn = async () => {
+    await refresh();
+    setAuthMode(null);
+  };
+
+  const handleSignOut = async () => {
+    logout();
+    await refresh();
+    setMenuOpen(false);
+  };
+
   return (
     <div className="page">
       <header>
@@ -71,22 +91,36 @@ export default function App() {
           aria-label="Open menu"
           onClick={() => setMenuOpen(true)}
         >
-          <CatGlyph />
+          {user && !user.anonymous && user.email
+            ? <span className="avatar-initial">{(user.name || user.email)[0].toUpperCase()}</span>
+            : <CatGlyph />}
         </button>
       </header>
 
       {menuOpen && languages && current && (
         <ProfileMenu
+          user={user}
           languages={languages}
           currentCode={currentCode}
           currentView={view}
           onClose={() => setMenuOpen(false)}
           onSwitchLanguage={switchLanguage}
           onSwitchView={switchView}
+          onOpenAuth={openAuth}
+          onSignOut={handleSignOut}
         />
       )}
 
-      {!sessionReady || !current ? (
+      {authMode && (
+        <AuthModal
+          mode={authMode}
+          onClose={() => setAuthMode(null)}
+          onModeChange={setAuthMode}
+          onSuccess={handleSignedIn}
+        />
+      )}
+
+      {!ready || !current ? (
         <div className="loading">Setting up your session…</div>
       ) : view === "today" ? (
         <ReviewView language={current} key={`today-${current.code}`} />
@@ -98,43 +132,45 @@ export default function App() {
 }
 
 function CatGlyph() {
-  // Minimalist cat silhouette — uses currentColor so it inherits theme
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
-      <path d="M5.5 4.5 7 9c-1.4 1.2-2 2.7-2 4.5C5 17.5 8 20 12 20s7-2.5 7-6.5c0-1.8-.6-3.3-2-4.5l1.5-4.5L15 6.7c-.9-.4-1.9-.7-3-.7s-2.1.3-3 .7L5.5 4.5Zm4.7 7.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm3.6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM12 16.5c-1 0-1.8-.5-2-1.2.6.2 1.3.3 2 .3s1.4-.1 2-.3c-.2.7-1 1.2-2 1.2Z"/>
+      <path d="M5.5 4.5 7 9c-1.4 1.2-2 2.7-2 4.5C5 17.5 8 20 12 20s7-2.5 7-6.5c0-1.8-.6-3.3-2-4.5l1.5-4.5L15 6.7c-.9-.4-1.9-.7-3-.7s-2.1.3-3 .7L5.5 4.5Zm4.7 7.6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm3.6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM12 16.5c-1 0-1.8-.5-2-1.2.6.2 1.3.3 2 .3s1.4-.1 2-.3c-.2.7-1 1.2-2 1.2Z" />
     </svg>
   );
 }
 
 function ProfileMenu({
+  user,
   languages,
   currentCode,
   currentView,
   onClose,
   onSwitchLanguage,
-  onSwitchView
+  onSwitchView,
+  onOpenAuth,
+  onSignOut
 }: {
+  user: Me | null;
   languages: Language[];
   currentCode: string;
   currentView: View;
   onClose: () => void;
   onSwitchLanguage: (code: string) => void;
   onSwitchView: (v: View) => void;
+  onOpenAuth: (m: AuthMode) => void;
+  onSignOut: () => void;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const isLoggedIn = !!user && !user.anonymous && !!user.email;
+
   return (
     <div className="menu-overlay" onClick={onClose}>
       <div
-        ref={panelRef}
         className="menu-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -142,13 +178,27 @@ function ProfileMenu({
       >
         <section className="menu-section menu-account-section">
           <div className="menu-avatar">
-            <CatGlyph />
+            {isLoggedIn
+              ? <span className="avatar-initial">{(user.name || user.email!)[0].toUpperCase()}</span>
+              : <CatGlyph />}
           </div>
-          <div>
-            <div className="menu-account-name">Anonymous</div>
-            <button className="menu-link" disabled>
-              Sign in (coming soon)
-            </button>
+          <div className="menu-account-info">
+            <div className="menu-account-name">
+              {isLoggedIn ? (user.name || user.email) : "Anonymous"}
+            </div>
+            {isLoggedIn ? (
+              <div className="menu-account-tier">{user.tier}</div>
+            ) : (
+              <div className="menu-account-actions">
+                <button className="menu-link-action" onClick={() => onOpenAuth("signup")}>
+                  Create account
+                </button>
+                <span className="menu-link-sep">·</span>
+                <button className="menu-link-action" onClick={() => onOpenAuth("login")}>
+                  Log in
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -192,6 +242,14 @@ function ProfileMenu({
             </li>
           </ul>
         </section>
+
+        {isLoggedIn && (
+          <section className="menu-section">
+            <button className="menu-item menu-item-danger" onClick={onSignOut}>
+              Sign out
+            </button>
+          </section>
+        )}
 
         <button className="menu-close" onClick={onClose}>
           Close
@@ -237,7 +295,7 @@ function ReviewView({ language }: { language: Language }) {
           <span className="stat-wrong">{wrong} missed</span>.
         </p>
         <button
-          className="btn btn-primary"
+          className="btn-primary"
           onClick={() => {
             setIdx(0);
             setHistory([]);
