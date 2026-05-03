@@ -8,6 +8,11 @@ servers:
   web:
     - 49.12.247.57
 
+ssh:
+  user: root
+  keys: [/root/.ssh/lingo_chatul]
+  config: false
+
 proxy:
   ssl: true
   host: api.lingochatul.com
