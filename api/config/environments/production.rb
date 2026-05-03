@@ -18,17 +18,17 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
+  # Generated images and audio live in Cloudflare R2 (S3-compatible).
+  config.active_storage.service = :r2
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  # config.assume_ssl = true
+  # Kamal Proxy terminates TLS in front of Puma; treat the app as behind SSL.
+  config.assume_ssl = true
 
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
+  # Redirect any plain-HTTP requests to HTTPS.
+  config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+  # Skip http-to-https redirect for the health check so Kamal Proxy can probe over HTTP.
+  config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
@@ -76,12 +76,7 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # Allow the public API host plus the Kamal Proxy health probe.
+  config.hosts << "api.lingochatul.com"
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

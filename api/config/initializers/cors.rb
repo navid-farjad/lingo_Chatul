@@ -5,7 +5,9 @@
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     if Rails.env.production?
-      origins "https://lingochatul.com", "https://www.lingochatul.com"
+      origins "https://app.lingochatul.com",
+              "https://lingochatul.com",
+              "https://www.lingochatul.com"
     else
       origins "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"
     end
