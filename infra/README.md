@@ -2,7 +2,9 @@
 
 Production infrastructure for lingo_Chatul. Both halves of the app are live.
 
-- **[DEPLOY.md](DEPLOY.md)** — full deploy guide: architecture, secrets, ops commands, how to seed prod data.
+> The deploy story is **AI-as-operator**. When the user says "deploy" or "ship", the agent reads [DEPLOY.md](DEPLOY.md) and executes its commands directly — there is no human runbook.
+
+- **[DEPLOY.md](DEPLOY.md)** — agent runbook: architecture, secrets, exact PowerShell+SSH command sequences, gotchas burned in previous sessions, how to seed prod data.
 
 ## Quick reference
 

@@ -4,6 +4,8 @@
 >
 > Greek-first; more languages added over time.
 
+> **Note for the next agent.** The deploy story is "the user asks an AI agent and the AI deploys" — there is no human runbook. When the user says "deploy the API" or "ship this", **execute the steps in [infra/DEPLOY.md](infra/DEPLOY.md) directly**. The doc is written for you, not for a human; it includes exact PowerShell commands, secrets paths on disk, the Hetzner SSH key location, and the gotchas already burned by previous sessions. Read [infra/DEPLOY.md](infra/DEPLOY.md) and [ai-docs/](ai-docs/) before doing infra work — they capture state from previous sessions that won't be obvious from `git log`.
+
 ---
 
 ## The idea (do not lose sight of this)
@@ -68,7 +70,7 @@ lingo_chatul/
 │   └── deploy.ps1                  # ssh + git pull + docker compose build + up
 ├── .github/workflows/
 │   └── deploy-web.yml              # Auto-deploys web/ on push to `production`
-├── docs/
+├── ai-docs/
 │   └── add-content.md              # ⭐ HOW TO ADD WORDS OR LANGUAGES
 ├── docker-compose.yml              # Postgres + Rails dev container
 ├── scripts/bootstrap.ps1           # One-time scaffold (Rails + Vite via Docker)
@@ -97,7 +99,7 @@ User (email?, password_digest?, device_token, tier: anonymous|free|paid, name?)
 
 ## Key conventions
 
-1. **Small batches first.** When generating AI content for a new language or expanding a deck, **always start with ≤20 words** and have the human review the output before scaling. The first deck for any new language should be `<lang>_smoke.csv` (1 word) or `<lang>_starter.csv` (~20 words). See [docs/add-content.md](docs/add-content.md).
+1. **Small batches first.** When generating AI content for a new language or expanding a deck, **always start with ≤20 words** and have the human review the output before scaling. The first deck for any new language should be `<lang>_smoke.csv` (1 word) or `<lang>_starter.csv` (~20 words). See [ai-docs/add-content.md](ai-docs/add-content.md).
 2. **Realistic cat photography.** Every image prompt ends with `photorealistic, professional photography, hyperrealistic, natural lighting, 4k, sharp focus`. The cat must be central. No cartoon styling.
 3. **Pre-generated content, not live.** AI calls happen offline in the rake task, NOT during user requests. The Rails API only serves pre-generated CDN URLs from the `cards` table.
 4. **Idempotent pipeline.** Re-running `content:generate[deck]` skips words whose `Card` already has `image_url` and `audio_url`. Safe to re-run.
@@ -123,7 +125,7 @@ Then open http://localhost:5173.
 
 ## Adding content (READ THIS BEFORE GENERATING)
 
-For any task involving **adding a new language, expanding a deck, regenerating a card, or tuning the AI prompt**, read **[docs/add-content.md](docs/add-content.md)**. It documents:
+For any task involving **adding a new language, expanding a deck, regenerating a card, or tuning the AI prompt**, read **[ai-docs/add-content.md](ai-docs/add-content.md)**. It documents:
 
 - CSV file naming and column conventions
 - The two flows (new language vs more words for existing language)
@@ -135,13 +137,13 @@ For any task involving **adding a new language, expanding a deck, regenerating a
 
 ## Deploy
 
-Both halves are live. Read **[infra/DEPLOY.md](infra/DEPLOY.md)** before touching anything deploy-related — it covers the full architecture, secrets layout, ops commands, and how to seed prod data.
+Both halves are live. **The agent (you) is the deploy operator.** When the user says "deploy" or "ship", execute [infra/DEPLOY.md](infra/DEPLOY.md) — that doc is your runbook, not a human's reference.
 
-TL;DR:
-- **Frontend** is live at <https://app.lingochatul.com> via a Cloudflare Worker (`lingo-chatul-web`). Auto-deploys on push to the `production` branch via [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml).
-- **Backend** is live at <https://api.lingochatul.com> on Hetzner `49.12.247.57`. Plain `docker compose` stack (Caddy → Rails → Postgres) defined in [infra/docker-compose.prod.yml](infra/docker-compose.prod.yml). Caddy auto-fetches Let's Encrypt certs.
-- To deploy the backend: `./infra/deploy.ps1` after committing to `main`. SSHs in, fast-forwards `/opt/lingo`, rebuilds the app image, restarts only what changed.
-- Production secrets live in `/opt/lingo/.env` on the Hetzner box (mode 0600). Local copy is at the repo root (gitignored).
+TL;DR of what's already wired:
+- **Frontend** at <https://app.lingochatul.com> — Cloudflare Worker `lingo-chatul-web`, auto-deploys on push to the `production` branch via [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml). To ship a frontend change: `git push origin main:production` and watch the Action with `gh run watch`.
+- **Backend** at <https://api.lingochatul.com> — plain docker compose stack on Hetzner `49.12.247.57` (Caddy → Rails → Postgres) defined in [infra/docker-compose.prod.yml](infra/docker-compose.prod.yml). To ship a backend change: commit to `main`, push, then SSH in to `git pull && docker compose build && up`. The exact PowerShell sequence is in [infra/deploy.ps1](infra/deploy.ps1) — preferred path is to invoke that script's contents directly, not run the script (so you can stream output and react to errors).
+- Production secrets live in `/opt/lingo/.env` on Hetzner (mode 0600). Local copy at repo root (gitignored). When rotating, update both.
+- SSH key for Hetzner: `~/.ssh/lingo_chatul`, user `root`.
 
 ---
 

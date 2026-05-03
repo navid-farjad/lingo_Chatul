@@ -1,10 +1,21 @@
-# Deploy guide — lingo_Chatul
+# Deploy runbook — lingo_Chatul
 
-How both halves of the app reach production. Read this before touching
-`web/wrangler.jsonc`, `infra/docker-compose.prod.yml`, or any GitHub
-Actions / Hetzner state.
+This is the runbook for the next AI agent. Humans don't deploy this app;
+they ask an agent to do it, and the agent reads this file and executes.
+Everything here is scripted PowerShell + SSH that you can run directly
+against the user's machine and the Hetzner box.
 
-Last updated: 2026-05-04. Both frontend and backend are **live**.
+Both halves are **live** as of the last session — your job is usually
+to ship a change to one of them, not to bootstrap from zero.
+
+When in doubt:
+- Frontend change → Section 2 ("ship a deploy")
+- Backend change → Section 3 ("ship a deploy")
+- Box rebuild → Section 3 ("first-deploy bootstrap")
+- Adding card data to prod → Section 7
+- Rotating a secret → Section 6 + the relevant ship-a-deploy step
+
+Last updated: 2026-05-04.
 
 ---
 
@@ -52,11 +63,20 @@ SSH user `root`, key at `~/.ssh/lingo_chatul`. Repo is checked out at
 - [web/src/api.ts:3](../web/src/api.ts#L3) — `API_BASE` reads `import.meta.env.VITE_API_BASE`, falls back to `http://localhost:3000` for dev
 - [.github/workflows/deploy-web.yml](../.github/workflows/deploy-web.yml) — auto-deploys on push to `production`
 
-### How a deploy happens
-1. Commit on `main`.
-2. `git push origin main:production` (or merge `main` → `production`).
-3. The Action's `paths: web/**` filter matches; it runs `npm install && npm run build && wrangler deploy` in `web/`.
-4. Cloudflare picks up the new bundle in seconds. Custom domain stays attached.
+### Ship a frontend deploy
+
+```powershell
+# Assumes the change is committed on main.
+git push origin main:production
+
+# Watch the Action; it usually finishes in ~40s.
+gh run watch -R navid-farjad/lingo_Chatul --exit-status
+
+# Verify
+curl -sI https://app.lingochatul.com | head -1
+```
+
+If the Action fails, the most common causes are documented under "Quirks" below. If it's the **first** time `production` is being created, GitHub fires `CreateEvent` (not `PushEvent`) and the workflow won't auto-trigger — kick it off manually with `gh workflow run deploy-web.yml -R navid-farjad/lingo_Chatul --ref production`.
 
 ### GitHub repo settings
 At <https://github.com/navid-farjad/lingo_Chatul>:
@@ -94,16 +114,37 @@ At <https://github.com/navid-farjad/lingo_Chatul>:
 - [api/config/environments/production.rb](../api/config/environments/production.rb) — `assume_ssl`, `force_ssl`, hosts allow-list, ActiveStorage = `:r2`
 - [api/config/storage.yml](../api/config/storage.yml) — `:r2` is the AWS S3 adapter pointed at the R2 endpoint
 
-### Day-to-day deploy
+### Ship a backend deploy
+
+Preferred path is to run the steps inline so you can react to errors,
+rather than firing `infra/deploy.ps1` blind:
 
 ```powershell
-# From repo root, after you've committed + pushed to main:
-./infra/deploy.ps1
+$key = "$env:USERPROFILE\.ssh\lingo_chatul"
+
+# 1. Make sure the change is on origin/main.
+git status              # clean? if not, commit first
+git push origin main
+
+# 2. Pull on Hetzner, rebuild, recreate only what changed.
+ssh -i $key root@49.12.247.57 @'
+set -e
+cd /opt/lingo && git fetch origin main && git reset --hard origin/main
+cd infra
+docker compose -f docker-compose.prod.yml --env-file ../.env build app
+docker compose -f docker-compose.prod.yml --env-file ../.env up -d
+docker compose -f docker-compose.prod.yml --env-file ../.env ps
+'@
+
+# 3. Verify.
+Invoke-WebRequest -Uri "https://api.lingochatul.com/up" -UseBasicParsing -TimeoutSec 30
 ```
 
-This SSHs in, fast-forwards `/opt/lingo` to `origin/main`, rebuilds the
-`app` image (cached layers), and restarts only the containers that
-changed. Caddy and Postgres stay up; Caddy keeps its issued cert.
+Caddy and Postgres stay up across deploys; Caddy keeps its issued cert.
+Only the `app` container is recreated when its image changes.
+
+If the `app` image fails to build, check that any new file under
+`api/bin/` has the executable bit set in git (`git update-index --chmod=+x api/bin/<name>`); Windows checkouts strip it.
 
 ### First-deploy bootstrap (already done; reproduce only if rebuilding the box)
 
@@ -162,19 +203,13 @@ ssh -i $env:USERPROFILE\.ssh\lingo_chatul root@49.12.247.57 'cd /opt/lingo/infra
 ssh -i $env:USERPROFILE\.ssh\lingo_chatul root@49.12.247.57 'cd /opt/lingo/infra && docker compose -f docker-compose.prod.yml --env-file ../.env up -d app'
 ```
 
-### A note on the exec bit
-`api/bin/*` scripts must have `+x` mode in the git index so the Linux
-container can run them. Windows checkouts strip the exec bit; we worked
-around it via `git update-index --chmod=+x`. If you ever add a new
-binstub, do the same:
+### Gotchas burned in previous sessions
 
-```sh
-git update-index --chmod=+x api/bin/<script>
-git commit -m "fix: mark <script> executable"
-```
-
-If you forget, the `app` container will fail at startup with
-`exec: "/rails/bin/docker-entrypoint": permission denied`.
+- **Windows-stripped exec bit.** `api/bin/*` scripts must be mode 0755 in the git index. After adding any new binstub, run `git update-index --chmod=+x api/bin/<name> && git commit -m "fix: mark <name> executable"`. If you forget, the `app` container dies at startup with `exec: "/rails/bin/docker-entrypoint": permission denied`.
+- **PowerShell `>` mangles UTF-8.** When piping a pgdump or any other text into a file from PowerShell, use `[System.IO.File]::WriteAllLines($path, $content, (New-Object System.Text.UTF8Encoding $false))`. Plain `>` writes UTF-16 LE which Postgres rejects with `ERROR: invalid byte sequence for encoding "UTF8": 0xff`.
+- **Cloudflare API token reuse.** A single token (`CLOUDFLARE_DNS_TOKEN` in `.env`) handles DNS, R2, **and** Workers Scripts. The name is misleading — it has zone-edit + workers-scripts-edit + worker-routes-edit scopes. Don't create separate tokens; rotate this one.
+- **No Kamal.** Earlier sessions tried and abandoned Kamal. The deploy is plain docker compose; do not reintroduce Kamal even when "rolling restart" looks tempting.
+- **First-time `production` branch creation does not trigger the GitHub Action.** GitHub fires `CreateEvent` instead of `PushEvent`; the `paths:` filter doesn't match. Use `gh workflow run` once after creating, then subsequent pushes work normally.
 
 ---
 
@@ -211,7 +246,7 @@ lingo_chatul/
 ├── .github/workflows/
 │   └── deploy-web.yml              # Auto-deploys web/ on push to `production`
 │
-├── docs/
+├── ai-docs/
 │   └── add-content.md              # How to add words / new languages
 │
 ├── docker-compose.yml              # Local dev (Postgres + Rails)
@@ -230,11 +265,11 @@ lingo_chatul/
 | `main` | Day-to-day development | Nothing automatic |
 | `production` | Release branch for the web Worker | `paths: web/**` triggers `deploy-web.yml` on push |
 
-The Hetzner backend is **not** wired to a GitHub Action — it's deployed
-from a developer's machine via [infra/deploy.ps1](deploy.ps1). Future
-work could wire this into Actions; the box already has Docker installed
-and pulls from a public git repo, so all you need is an SSH deploy key
-on the runner.
+The Hetzner backend is **not** wired to a GitHub Action — agent sessions
+deploy it directly via SSH (Section 3, "Ship a backend deploy"). Future
+work could wire this into Actions if a CI runner gets the Hetzner SSH
+key as a secret, but right now the simpler model is: user asks the
+agent → agent runs the SSH commands → agent verifies.
 
 ---
 
@@ -251,32 +286,63 @@ on the runner.
 | Rails master key | `api/config/master.key` (gitignored) | n/a | `/opt/lingo/.env` → `RAILS_MASTER_KEY` (appended at bootstrap) |
 | Postgres password | `.env` → `API_DATABASE_PASSWORD` (auto-generated) | n/a | same |
 
-Rotation: edit `.env` locally, rerun the first-deploy bootstrap step 2
-(rebuilds `/opt/lingo/.env`), then `./infra/deploy.ps1` to restart with
-new values. For GitHub-side secrets use `gh secret set <NAME> -R navid-farjad/lingo_Chatul`.
+### Rotating a secret
+
+```powershell
+$key = "$env:USERPROFILE\.ssh\lingo_chatul"
+
+# 1. Edit .env locally (replace the value).
+# 2. Rebuild the production .env on Hetzner from local .env + master.key.
+$envLocal = Get-Content "$PWD\.env" -Raw
+$masterKey = (Get-Content "$PWD\api\config\master.key" -Raw).Trim()
+$hetznerEnv = $envLocal.TrimEnd() + "`n`nRAILS_MASTER_KEY=$masterKey`n"
+$tmp = New-TemporaryFile; [System.IO.File]::WriteAllText($tmp, $hetznerEnv)
+scp -i $key $tmp root@49.12.247.57:/opt/lingo/.env
+Remove-Item $tmp
+ssh -i $key root@49.12.247.57 'chmod 600 /opt/lingo/.env'
+
+# 3. Restart the app to pick up the new env.
+ssh -i $key root@49.12.247.57 'cd /opt/lingo/infra && docker compose -f docker-compose.prod.yml --env-file ../.env up -d app'
+
+# 4. For GitHub-side secrets, also run:
+#    gh secret set <NAME> -R navid-farjad/lingo_Chatul
+```
 
 ---
 
 ## 7. Adding card data to production
 
-The production DB is empty — `/api/v1/languages` returns `[]` until you
-seed it. Two reasonable paths:
+`/api/v1/languages` returns `[]` until the production DB has cards. Two
+paths, in order of preference:
 
-**A) Push a pgdump from local dev:**
+**A) Push a pgdump from local dev (fast, free):**
 ```powershell
-docker exec lingo_chatul_db pg_dump -U lingo_chatul -d lingo_chatul_development \
-  --data-only --table=languages --table=words --table=cards \
-  > prod_seed.sql
-scp -i $env:USERPROFILE\.ssh\lingo_chatul prod_seed.sql root@49.12.247.57:/tmp/
-ssh -i $env:USERPROFILE\.ssh\lingo_chatul root@49.12.247.57 \
-  'cd /opt/lingo/infra && docker compose -f docker-compose.prod.yml --env-file ../.env exec -T db psql -U api -d api_production < /tmp/prod_seed.sql'
+$key = "$env:USERPROFILE\.ssh\lingo_chatul"
+$dump = "$env:TEMP\lingo_seed.sql"
+
+# Note: pipe into [System.IO.File]::WriteAllLines, NOT `>`, to avoid UTF-16 BOM.
+$sql = docker exec lingo_chatul_db pg_dump -U lingo_chatul -d lingo_chatul_development `
+  --data-only --table=languages --table=words --table=cards
+[System.IO.File]::WriteAllLines($dump, $sql, (New-Object System.Text.UTF8Encoding $false))
+
+scp -i $key $dump root@49.12.247.57:/tmp/lingo_seed.sql
+Remove-Item $dump
+
+ssh -i $key root@49.12.247.57 @'
+cd /opt/lingo/infra
+docker compose -f docker-compose.prod.yml --env-file ../.env exec -T db \
+  psql -U api -d api_production -v ON_ERROR_STOP=1 < /tmp/lingo_seed.sql
+docker compose -f docker-compose.prod.yml --env-file ../.env exec -T db \
+  psql -U api -d api_production -c "SELECT (SELECT COUNT(*) FROM languages) AS langs, (SELECT COUNT(*) FROM words) AS words, (SELECT COUNT(*) FROM cards) AS cards;"
+rm /tmp/lingo_seed.sql
+'@
+
+Invoke-WebRequest -Uri "https://api.lingochatul.com/api/v1/languages" -UseBasicParsing
 ```
 
-**B) Run the content pipeline against production:** copy the CSV decks
-to the box and `bin/rails content:generate[deck_name]` inside the app
-container. Hits the AI services live, costs API credits, slow.
+The image and audio URLs in the dump point at the same R2 bucket dev uses, so they work in prod with no rewriting. The dump contains data only; schema is already migrated by `db:prepare` on container start. **Note:** seeding clobbers existing rows on PK collision — for a true incremental update, use path B.
 
-(A) is faster and free if dev already has the cards generated.
+**B) Run the content pipeline against production:** copy CSV decks to the box, then `docker compose exec app bin/rails content:generate[deck_name]`. Hits AI services live, slow, costs API credits, but creates net-new cards rather than overwriting. Use this when adding a new language deck after the first launch.
 
 ---
 
