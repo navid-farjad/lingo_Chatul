@@ -8,7 +8,21 @@ module ContentPipeline
     SEEDS_ROOT = Rails.root.join("..", "content-pipeline", "seeds").freeze
 
     LANGUAGE_BY_CODE = {
-      "el" => { name: "Greek" }
+      "el" => { name: "Greek" },
+      "es" => { name: "Spanish" },
+      "fr" => { name: "French" },
+      "it" => { name: "Italian" },
+      "de" => { name: "German" },
+      "pt" => { name: "Portuguese" },
+      "nl" => { name: "Dutch" },
+      "tr" => { name: "Turkish" },
+      "pl" => { name: "Polish" },
+      "ja" => { name: "Japanese" },
+      "ko" => { name: "Korean" },
+      "zh" => { name: "Chinese" },
+      "ar" => { name: "Arabic" },
+      "he" => { name: "Hebrew" },
+      "ru" => { name: "Russian" }
     }.freeze
 
     def initialize(deck_name)
@@ -46,14 +60,24 @@ module ContentPipeline
     private
 
     def detect_language_code(deck_name)
-      # "greek_starter" -> "el", "spanish_starter" -> "es", etc.
+      # "greek_starter" -> "el", "spanish_a1" -> "es", etc.
       prefix = deck_name.split("_").first
       {
         "greek" => "el",
         "spanish" => "es",
         "french" => "fr",
         "italian" => "it",
-        "german" => "de"
+        "german" => "de",
+        "portuguese" => "pt",
+        "dutch" => "nl",
+        "turkish" => "tr",
+        "polish" => "pl",
+        "japanese" => "ja",
+        "korean" => "ko",
+        "chinese" => "zh",
+        "arabic" => "ar",
+        "hebrew" => "he",
+        "russian" => "ru"
       }.fetch(prefix) { raise "Unknown language for deck: #{deck_name}" }
     end
 
@@ -66,7 +90,8 @@ module ContentPipeline
     end
 
     def upsert_word(language, row)
-      Word.find_or_create_by!(language: language, native: row["greek"] || row["native"]) do |w|
+      native = row["native"] or raise "CSV row missing 'native' column: #{row.to_h.inspect}"
+      Word.find_or_create_by!(language: language, native: native) do |w|
         w.romanization = row["romanization"]
         w.english = row["english"]
         w.part_of_speech = row["part_of_speech"]

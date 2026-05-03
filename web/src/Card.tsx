@@ -10,7 +10,6 @@ export function FlipCard({ card, onAnswer }: Props) {
   const [flipped, setFlipped] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Reset to front whenever card changes
   useEffect(() => {
     setFlipped(false);
   }, [card.id]);
@@ -25,24 +24,39 @@ export function FlipCard({ card, onAnswer }: Props) {
       <div
         className={`flip-card ${flipped ? "flipped" : ""}`}
         onClick={() => !flipped && setFlipped(true)}
-        role="button"
-        tabIndex={0}
       >
         <div className="flip-inner">
+          {/* === FRONT === image + word as the cue */}
           <div className="flip-front">
-            <div className="front-content">
-              <div className="native-large">{card.native}</div>
-              <div className="romanization-large">{card.romanization}</div>
-              <button className="audio-btn" onClick={playAudio} aria-label="Play pronunciation">
-                ▶ Listen
-              </button>
-              <div className="flip-hint">Tap to reveal</div>
+            <div className="card-image-wrap">
+              <img src={card.image_url} alt="" />
+            </div>
+            <div className="card-text-area">
+              <div className="card-text-stack">
+                <div className="native-large">{card.native}</div>
+                <div className="romanization-large">{card.romanization}</div>
+                <button
+                  className="audio-btn"
+                  onClick={playAudio}
+                  aria-label="Play pronunciation"
+                >
+                  ▶ Listen
+                </button>
+              </div>
+              <div className="flip-hint">Tap card to reveal meaning</div>
             </div>
           </div>
 
+          {/* === BACK === same image + meaning + story */}
           <div className="flip-back">
-            <img src={card.image_url} alt={card.english} />
+            <div className="card-image-wrap">
+              <img src={card.image_url} alt={card.english} />
+            </div>
             <div className="back-content">
+              <div className="back-header">
+                <div className="back-native">{card.native}</div>
+                <div className="back-romanization">{card.romanization}</div>
+              </div>
               <div className="english-large">{card.english}</div>
               <p className="story">{card.story}</p>
             </div>
@@ -54,10 +68,12 @@ export function FlipCard({ card, onAnswer }: Props) {
       {flipped && (
         <div className="answer-buttons">
           <button className="btn btn-wrong" onClick={() => onAnswer(false)}>
-            ✗ Didn't know
+            <span className="btn-icon">✗</span>
+            <span>Again</span>
           </button>
           <button className="btn btn-right" onClick={() => onAnswer(true)}>
-            ✓ Knew it
+            <span className="btn-icon">✓</span>
+            <span>Got it</span>
           </button>
         </div>
       )}
